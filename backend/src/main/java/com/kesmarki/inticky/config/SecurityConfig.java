@@ -22,6 +22,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/", "/health", "/h2-console/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/ai/status", "/ai/capabilities", "/ai/examples").permitAll()
+                .requestMatchers("/ai/chat", "/ai/chat/session").permitAll()
+                .requestMatchers("/ai/help/**", "/ai/suggest").permitAll()
                 .anyRequest().authenticated()
             )
             .httpBasic(httpBasic -> {});

@@ -74,6 +74,29 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- AgentInSec-AI Library -->
+        <dependency>
+            <groupId>com.agentinsec</groupId>
+            <artifactId>agentinsec-ai</artifactId>
+            <version>1.8.0</version>
+        </dependency>
+
+        <!-- Additional dependencies for AgentInsec -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -87,8 +110,15 @@
 
     <repositories>
         <repository>
-            <id>github</id>
-            <url>https://maven.pkg.github.com/Kesmarki-Dev/*</url>
+            <id>github-agentinsec</id>
+            <url>https://maven.pkg.github.com/Kesmarki-Dev/agentinsec</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2</url>
         </repository>
     </repositories>
 

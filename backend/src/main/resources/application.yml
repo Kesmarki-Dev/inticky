@@ -44,7 +44,23 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,security
   endpoint:
     health:
       show-details: always
+
+# AgentInSec-AI Configuration
+agentinsec:
+  api-key: ${AGENTINSEC_API_KEY:demo-key-12345}
+  provider: openai  # vagy azure
+  azure:
+    endpoint: ${AZURE_OPENAI_ENDPOINT:}
+    router-deployment: gpt-router
+    agent-deployment: gpt-agent
+    embedding-deployment: gpt-embedding
+  vector-store:
+    type: memory  # vagy qdrant
+    qdrant:
+      url: http://localhost:6333
+      collection: ticketing_vectors
+  debug-mode: true
