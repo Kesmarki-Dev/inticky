@@ -1,0 +1,334 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    allow-bean-definition-overriding: true
+  
+  cloud:
+    gateway:
+      # Global CORS configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: 
+              - "http://localhost:3001"
+              - "http://127.0.0.1:3001"
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      
+      # Route configurations
+      routes:
+        # Tenant Service
+        - id: tenant-service
+          uri: http://tenant-service:8081
+          predicates:
+            - Path=/api/tenants/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: tenant-service
+                fallbackUri: forward:/fallback/tenant-service
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+        
+        # User Service - Authentication (no auth required)
+        - id: user-service-auth
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/user-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+        
+        # User Service - User Management (auth required)
+        - id: user-service-users
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - AuthenticationFilter
+            - TenantFilter
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/user-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                redis-rate-limiter.requestedTokens: 1
+        
+        # Ticket Service
+        - id: ticket-service
+          uri: http://ticket-service:8083
+          predicates:
+            - Path=/api/tickets/**
+          filters:
+            - AuthenticationFilter
+            - TenantFilter
+            - name: CircuitBreaker
+              args:
+                name: ticket-service
+                fallbackUri: forward:/fallback/ticket-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                redis-rate-limiter.requestedTokens: 1
+        
+        # AI Service
+        - id: ai-service
+          uri: http://ai-service:8084
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - AuthenticationFilter
+            - TenantFilter
+            - name: CircuitBreaker
+              args:
+                name: ai-service
+                fallbackUri: forward:/fallback/ai-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+        
+        # Notification Service
+        - id: notification-service
+          uri: http://notification-service:8085
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - AuthenticationFilter
+            - TenantFilter
+            - name: CircuitBreaker
+              args:
+                name: notification-service
+                fallbackUri: forward:/fallback/notification-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+      
+      # Default filters applied to all routes
+      default-filters:
+        - name: RequestLogging
+        - name: ResponseLogging
+        - name: AddRequestHeader
+          args:
+            name: X-Gateway-Request-Id
+            value: "#{T(java.util.UUID).randomUUID().toString()}"
+        - name: AddResponseHeader
+          args:
+            name: X-Gateway-Response-Time
+            value: "#{T(System).currentTimeMillis()}"
+
+  # Redis configuration for rate limiting
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  # Security configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
+
+# Circuit Breaker configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      tenant-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      user-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      ticket-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      ai-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 60
+        eventConsumerBufferSize: 10
+      notification-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+  retry:
+    instances:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+    gateway:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Logging configuration
+logging:
+  level:
+    com.kesmarki.inticky: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    reactor.netty.http.client: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: API Gateway
+        url: /api-docs
+      - name: Tenant Service
+        url: http://tenant-service:8081/api-docs
+      - name: User Service
+        url: http://user-service:8082/api-docs
+      - name: Ticket Service
+        url: http://ticket-service:8083/api-docs
+
+# Application specific configuration
+inticky:
+  gateway:
+    # Rate limiting configuration
+    rate-limit:
+      default-replenish-rate: 10
+      default-burst-capacity: 20
+      auth-replenish-rate: 20
+      auth-burst-capacity: 40
+    
+    # Security configuration
+    security:
+      jwt:
+        secret: ${JWT_SECRET:mySecretKey}
+        expiration: 86400 # 24 hours
+      excluded-paths:
+        - /api/auth/**
+        - /actuator/**
+        - /swagger-ui/**
+        - /api-docs/**
+        - /fallback/**
+    
+    # Service discovery
+    services:
+      tenant-service:
+        url: http://tenant-service:8081
+        health-check: /actuator/health
+      user-service:
+        url: http://user-service:8082
+        health-check: /actuator/health
+      ticket-service:
+        url: http://ticket-service:8083
+        health-check: /actuator/health
+      ai-service:
+        url: http://ai-service:8084
+        health-check: /actuator/health
+      notification-service:
+        url: http://notification-service:8085
+        health-check: /actuator/health
+    
+    # Fallback configuration
+    fallback:
+      enabled: true
+      timeout: 5s
+      default-message: "Service temporarily unavailable. Please try again later."

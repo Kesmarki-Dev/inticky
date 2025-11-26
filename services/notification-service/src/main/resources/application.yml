@@ -1,0 +1,237 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: notification-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/inticky_notifications
+    username: ${DB_USERNAME:inticky_user}
+    password: ${DB_PASSWORD:inticky_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 1 hour
+    cache-names:
+      - notification-templates
+      - notification-preferences
+      - delivery-status
+      - webhook-configs
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 2
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  # Email Configuration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+    test-connection: false
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.kesmarki.inticky.*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    admin:
+      properties:
+        bootstrap.servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging
+logging:
+  level:
+    com.kesmarki.inticky: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.mail: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# Application specific configuration
+inticky:
+  notification:
+    # Email Configuration
+    email:
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+      from-address: ${NOTIFICATION_FROM_EMAIL:noreply@inticky.com}
+      from-name: ${NOTIFICATION_FROM_NAME:Inticky Support}
+      reply-to: ${NOTIFICATION_REPLY_TO:support@inticky.com}
+      max-retries: 3
+      retry-delay-seconds: 30
+      batch-size: 50
+      rate-limit-per-minute: 100
+      
+    # Push Notification Configuration
+    push:
+      enabled: ${NOTIFICATION_PUSH_ENABLED:true}
+      firebase:
+        enabled: ${FIREBASE_ENABLED:false}
+        credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+        project-id: ${FIREBASE_PROJECT_ID:}
+      max-retries: 3
+      retry-delay-seconds: 15
+      batch-size: 100
+      
+    # SMS Configuration
+    sms:
+      enabled: ${NOTIFICATION_SMS_ENABLED:false}
+      provider: ${SMS_PROVIDER:twilio}
+      twilio:
+        account-sid: ${TWILIO_ACCOUNT_SID:}
+        auth-token: ${TWILIO_AUTH_TOKEN:}
+        from-number: ${TWILIO_FROM_NUMBER:}
+      max-retries: 3
+      retry-delay-seconds: 60
+      
+    # Webhook Configuration
+    webhook:
+      enabled: ${NOTIFICATION_WEBHOOK_ENABLED:true}
+      timeout-seconds: 30
+      max-retries: 5
+      retry-delay-seconds: 60
+      batch-size: 20
+      
+    # Template Configuration
+    template:
+      cache-duration-minutes: 60
+      default-language: en
+      supported-languages: en,hu,de,fr,es
+      
+    # Delivery Configuration
+    delivery:
+      max-attempts: 5
+      exponential-backoff: true
+      max-delay-minutes: 1440 # 24 hours
+      cleanup-after-days: 30
+      
+    # Rate Limiting
+    rate-limit:
+      email-per-minute: 100
+      push-per-minute: 500
+      sms-per-minute: 10
+      webhook-per-minute: 200
+      
+    # Monitoring
+    monitoring:
+      track-delivery-status: true
+      track-open-rates: true
+      track-click-rates: true
+      retention-days: 90
+      
+    # Integration Configuration
+    integration:
+      user-service:
+        url: ${USER_SERVICE_URL:http://user-service:8082}
+        timeout: 10s
+      ticket-service:
+        url: ${TICKET_SERVICE_URL:http://ticket-service:8083}
+        timeout: 15s
+      ai-service:
+        url: ${AI_SERVICE_URL:http://ai-service:8084}
+        timeout: 30s
+        
+    # Event Processing
+    events:
+      async-processing: true
+      thread-pool-size: 10
+      queue-capacity: 1000
+      batch-processing: true
+      batch-timeout-seconds: 30
+      
+    # Security
+    security:
+      webhook-signature-secret: ${WEBHOOK_SIGNATURE_SECRET:change-me}
+      encrypt-sensitive-data: true
+      mask-email-addresses: false
+      
+    # Performance
+    performance:
+      enable-compression: true
+      connection-pool-size: 20
+      connection-timeout-seconds: 30
+      read-timeout-seconds: 60

@@ -1,0 +1,70 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    scrape_interval: 10s
+
+  # Tenant Service
+  - job_name: 'tenant-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['tenant-service:8081']
+    scrape_interval: 15s
+
+  # User Service
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['user-service:8082']
+    scrape_interval: 15s
+
+  # Ticket Service
+  - job_name: 'ticket-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['ticket-service:8083']
+    scrape_interval: 10s
+
+  # AI Service
+  - job_name: 'ai-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['ai-service:8084']
+    scrape_interval: 15s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['notification-service:8085']
+    scrape_interval: 15s
+
+  # PostgreSQL Exporter (if needed)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter (if needed)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # Kafka Exporter (if needed)
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka-exporter:9308']

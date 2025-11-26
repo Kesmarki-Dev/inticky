@@ -3,6 +3,30 @@
 ## Projekt Áttekintés
 Ez egy Spring Boot alapú ticketing rendszer, amely az AgentInSec-AI library-t használja intelligens AI funkcionalitáshoz. A rendszer célja, hogy majdnem minden funkciót az AI is el tudjon látni.
 
+## 🐳 Docker Környezet Szabályok
+
+### KRITIKUS: Backend Docker Policy
+- **MINDEN backend szolgáltatás CSAK Docker-ben futhat**
+- **SOHA ne indíts backend szolgáltatásokat lokálisan Java-val**
+- **Frontend (React) az EGYETLEN komponens, ami lokálisan fut**
+- **Adatbázis, Redis, Kafka - mind Docker-ben**
+
+### Docker Compose Használat
+```bash
+# Backend szolgáltatások indítása
+docker-compose up -d postgres redis kafka
+docker-compose up --build user-service ticket-service tenant-service
+
+# Frontend külön (lokálisan)
+cd frontend && npm run dev
+```
+
+### Fejlesztési Workflow
+1. Backend változtatás → Docker rebuild szükséges
+2. Frontend változtatás → csak lokális restart
+3. Adatbázis változtatás → Docker container restart
+4. MINDIG Docker-ben tesztelj backend funkciókat
+
 ## AgentInSec-AI Library Szabályok
 
 ### 1. Library Alapok

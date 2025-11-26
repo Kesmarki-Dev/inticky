@@ -1,0 +1,190 @@
+package com.kesmarki.inticky.tenant.controller;
+
+import com.kesmarki.inticky.common.dto.ApiResponse;
+import com.kesmarki.inticky.tenant.dto.TenantCreateRequest;
+import com.kesmarki.inticky.tenant.dto.TenantResponse;
+import com.kesmarki.inticky.tenant.dto.TenantUpdateRequest;
+import com.kesmarki.inticky.tenant.service.TenantService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+/**
+ * REST Controller for tenant management operations
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/tenants")
+@RequiredArgsConstructor
+@Tag(name = "Tenant Management", description = "Operations for managing tenants and organizations")
+public class TenantController {
+
+    private final TenantService tenantService;
+
+    @Operation(summary = "Get all tenants", description = "Retrieve all tenants with pagination")
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<TenantResponse>>> getAllTenants(
+            @PageableDefault(size = 20) Pageable pageable) {
+        log.debug("GET /api/tenants - pageable: {}", pageable);
+        
+        Page<TenantResponse> tenants = tenantService.getAllTenants(pageable);
+        return ResponseEntity.ok(ApiResponse.success(tenants, "Tenants retrieved successfully"));
+    }
+
+    @Operation(summary = "Get tenant by ID", description = "Retrieve a specific tenant by its ID")
+    @GetMapping("/{tenantId}")
+    public ResponseEntity<ApiResponse<TenantResponse>> getTenantById(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId) {
+        log.debug("GET /api/tenants/{}", tenantId);
+        
+        TenantResponse tenant = tenantService.getTenantById(tenantId);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant retrieved successfully"));
+    }
+
+    @Operation(summary = "Get tenant by domain", description = "Retrieve a tenant by its domain")
+    @GetMapping("/domain/{domain}")
+    public ResponseEntity<ApiResponse<TenantResponse>> getTenantByDomain(
+            @Parameter(description = "Tenant domain") @PathVariable String domain) {
+        log.debug("GET /api/tenants/domain/{}", domain);
+        
+        TenantResponse tenant = tenantService.getTenantByDomain(domain);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant retrieved successfully"));
+    }
+
+    @Operation(summary = "Get active tenants", description = "Retrieve all active tenants with pagination")
+    @GetMapping("/active")
+    public ResponseEntity<ApiResponse<Page<TenantResponse>>> getActiveTenants(
+            @PageableDefault(size = 20) Pageable pageable) {
+        log.debug("GET /api/tenants/active - pageable: {}", pageable);
+        
+        Page<TenantResponse> tenants = tenantService.getActiveTenants(pageable);
+        return ResponseEntity.ok(ApiResponse.success(tenants, "Active tenants retrieved successfully"));
+    }
+
+    @Operation(summary = "Search tenants", description = "Search tenants by name or domain")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<TenantResponse>>> searchTenants(
+            @Parameter(description = "Search keyword") @RequestParam String keyword,
+            @PageableDefault(size = 20) Pageable pageable) {
+        log.debug("GET /api/tenants/search?keyword={} - pageable: {}", keyword, pageable);
+        
+        Page<TenantResponse> tenants = tenantService.searchTenants(keyword, pageable);
+        return ResponseEntity.ok(ApiResponse.success(tenants, "Tenants search completed successfully"));
+    }
+
+    @Operation(summary = "Create new tenant", description = "Create a new tenant organization")
+    @PostMapping
+    public ResponseEntity<ApiResponse<TenantResponse>> createTenant(
+            @Valid @RequestBody TenantCreateRequest request) {
+        log.info("POST /api/tenants - creating tenant: {}", request.getId());
+        
+        TenantResponse tenant = tenantService.createTenant(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(tenant, "Tenant created successfully"));
+    }
+
+    @Operation(summary = "Update tenant", description = "Update tenant information")
+    @PutMapping("/{tenantId}")
+    public ResponseEntity<ApiResponse<TenantResponse>> updateTenant(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId,
+            @Valid @RequestBody TenantUpdateRequest request) {
+        log.info("PUT /api/tenants/{} - updating tenant", tenantId);
+        
+        TenantResponse tenant = tenantService.updateTenant(tenantId, request);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant updated successfully"));
+    }
+
+    @Operation(summary = "Update tenant settings", description = "Update tenant-specific settings")
+    @PutMapping("/{tenantId}/settings")
+    public ResponseEntity<ApiResponse<TenantResponse>> updateTenantSettings(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId,
+            @RequestBody Map<String, Object> settings) {
+        log.info("PUT /api/tenants/{}/settings - updating settings", tenantId);
+        
+        TenantResponse tenant = tenantService.updateTenantSettings(tenantId, settings);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant settings updated successfully"));
+    }
+
+    @Operation(summary = "Suspend tenant", description = "Suspend a tenant with reason")
+    @PostMapping("/{tenantId}/suspend")
+    public ResponseEntity<ApiResponse<TenantResponse>> suspendTenant(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId,
+            @RequestParam(required = false, defaultValue = "Administrative action") String reason) {
+        log.info("POST /api/tenants/{}/suspend - suspending tenant with reason: {}", tenantId, reason);
+        
+        TenantResponse tenant = tenantService.suspendTenant(tenantId, reason);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant suspended successfully"));
+    }
+
+    @Operation(summary = "Activate tenant", description = "Activate a suspended tenant")
+    @PostMapping("/{tenantId}/activate")
+    public ResponseEntity<ApiResponse<TenantResponse>> activateTenant(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId) {
+        log.info("POST /api/tenants/{}/activate - activating tenant", tenantId);
+        
+        TenantResponse tenant = tenantService.activateTenant(tenantId);
+        return ResponseEntity.ok(ApiResponse.success(tenant, "Tenant activated successfully"));
+    }
+
+    @Operation(summary = "Delete tenant", description = "Soft delete a tenant (set status to INACTIVE)")
+    @DeleteMapping("/{tenantId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTenant(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId) {
+        log.info("DELETE /api/tenants/{} - deleting tenant", tenantId);
+        
+        tenantService.deleteTenant(tenantId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Tenant deleted successfully"));
+    }
+
+    @Operation(summary = "Get tenant statistics", description = "Retrieve system-wide tenant statistics")
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTenantStatistics() {
+        log.debug("GET /api/tenants/statistics");
+        
+        Map<String, Object> statistics = tenantService.getTenantStatistics();
+        return ResponseEntity.ok(ApiResponse.success(statistics, "Tenant statistics retrieved successfully"));
+    }
+
+    @Operation(summary = "Check tenant status", description = "Check if tenant is active by ID")
+    @GetMapping("/{tenantId}/status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkTenantStatus(
+            @Parameter(description = "Tenant ID") @PathVariable String tenantId) {
+        log.debug("GET /api/tenants/{}/status", tenantId);
+        
+        boolean isActive = tenantService.isTenantActiveById(tenantId);
+        Map<String, Object> status = Map.of(
+                "tenantId", tenantId,
+                "isActive", isActive,
+                "checkedAt", java.time.LocalDateTime.now()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(status, "Tenant status checked successfully"));
+    }
+
+    @Operation(summary = "Check tenant status by domain", description = "Check if tenant is active by domain")
+    @GetMapping("/domain/{domain}/status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkTenantStatusByDomain(
+            @Parameter(description = "Tenant domain") @PathVariable String domain) {
+        log.debug("GET /api/tenants/domain/{}/status", domain);
+        
+        boolean isActive = tenantService.isTenantActiveByDomain(domain);
+        Map<String, Object> status = Map.of(
+                "domain", domain,
+                "isActive", isActive,
+                "checkedAt", java.time.LocalDateTime.now()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(status, "Tenant status checked successfully"));
+    }
+}
