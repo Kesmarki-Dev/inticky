@@ -1,0 +1,107 @@
+# InTicky - Backend Cursor Rules
+
+## Szerepkör
+
+Te egy backend fejlesztő vagy, aki Java Quarkus mikroszolgáltatásokon dolgozik az InTicky projekten.
+
+## Főbb Fókusz Területek
+
+- **Quarkus 3.x** framework használata
+- **Mikroszolgáltatások** architektúra
+- **Multi-tenant** izoláció minden service-ben
+- **AgentInSec AI Library** integráció (ai-agent-service)
+- **Service-to-service** kommunikáció
+- **Modul aktiválás** ellenőrzés
+
+## Technológiai Stack
+
+- **Java 17+** (LTS)
+- **Quarkus 3.x**
+- **Hibernate ORM with Panache**
+- **PostgreSQL** (via JDBC)
+- **Redis** (caching)
+- **AgentInSec AI Library v3.5.0** (ai-agent-service)
+
+## Coding Standards
+
+### 1. Multi-Tenant Izoláció
+
+**MINDIG** használj `tenant_id`-t:
+
+```java
+// ✅ JÓ
+public List<Ticket> getTickets() {
+    UUID tenantId = tenantContext.getTenantId();
+    return ticketRepository.find("tenant_id", tenantId).list();
+}
+
+// ❌ ROSSZ - VESZÉLYES!
+public List<Ticket> getTickets() {
+    return ticketRepository.findAll(); // Nincs tenant szűrés!
+}
+```
+
+### 2. Quarkus Best Practices
+
+- **CDI használata:** `@ApplicationScoped`, `@Inject`
+- **Panache Repository:** `implements PanacheRepository<T>`
+- **REST Controllers:** JAX-RS `@Path`, `@GET`, `@POST`, stb.
+- **DTO-k használata:** Ne adj vissza entity-ket közvetlenül
+
+### 3. Service Struktúra
+
+Minden service követi ezt a struktúrát:
+```
+service-name/
+├── controller/    # REST endpoints
+├── service/       # Business logic
+├── repository/    # Data access (Panache)
+├── model/         # Entities, DTOs
+└── config/        # Configuration
+```
+
+### 4. Modul Aktiválás
+
+Service-ek, amelyek modul aktiválást igényelnek:
+
+```java
+@ModuleRequired("ticket")
+@Path("/api/v1/tickets")
+public class TicketController {
+    // Csak akkor érhető el, ha ticket modul aktív
+}
+```
+
+### 5. Error Handling
+
+- Használj specifikus exception-öket
+- Exception mapper-ek implementálása
+- Konzisztens error response formátum
+
+## Service Lista
+
+- `api-gateway` - API Gateway
+- `auth-service` - Autentikáció
+- `ticket-service` - Support ticketek
+- `project-service` - Fejlesztési projektek
+- `user-service` - Felhasználó kezelés
+- `notification-service` - Értesítések
+- `file-service` - Fájl kezelés
+- `ai-agent-service` - AI chat és agent (AgentInSec)
+
+## Dokumentáció
+
+- [Backend Setup](../docs/development/backend/setup.md)
+- [Backend Architektúra](../docs/development/backend/architecture.md)
+- [AI Agent Integráció](../docs/development/backend/ai-agent-integration.md)
+- [Coding Standards](../docs/development/backend/coding-standards.md)
+- [Testing](../docs/development/backend/testing.md)
+
+## Fontos Emlékeztetők
+
+1. **Tenant ID mindig kötelező** - Minden adatbázis műveletnél
+2. **Modul aktiválás ellenőrzés** - Service-ek, amelyek modult igényelnek
+3. **DTO-k használata** - Ne adj vissza entity-ket közvetlenül
+4. **Error handling** - Specifikus exception-ök és mapper-ek
+5. **Logging** - Structured logging használata
+

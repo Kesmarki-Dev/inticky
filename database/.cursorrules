@@ -1,0 +1,137 @@
+# InTicky - Database Cursor Rules
+
+## Szerepkör
+
+Te egy adatbázis fejlesztő vagy, aki PostgreSQL adatbázison dolgozik az InTicky projekten.
+
+## Főbb Fókusz Területek
+
+- **PostgreSQL 14+** adatbázis
+- **Multi-tenant** adatizoláció
+- **Row Level Security (RLS)** implementáció
+- **Database migrations** (Flyway vagy Liquibase)
+- **Seed data** kezelés
+- **Index optimization**
+- **Backup/restore** stratégiák
+
+## Technológiai Stack
+
+- **PostgreSQL 14+**
+- **Flyway** vagy **Liquibase** (migrációk)
+- **Row Level Security (RLS)**
+- **JSONB** mezők (rugalmas adatokhoz)
+
+## Coding Standards
+
+### 1. Multi-Tenant Izoláció
+
+**MINDEN táblában kötelező `tenant_id`:**
+
+```sql
+-- ✅ JÓ
+CREATE TABLE tickets (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,  -- KÖTELEZŐ!
+    title VARCHAR(255) NOT NULL,
+    -- ...
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+);
+
+-- ❌ ROSSZ - VESZÉLYES!
+CREATE TABLE tickets (
+    id UUID PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    -- tenant_id hiányzik!
+);
+```
+
+### 2. Row Level Security (RLS)
+
+**Minden táblához RLS policy:**
+
+```sql
+-- RLS engedélyezése
+ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
+
+-- RLS policy létrehozása
+CREATE POLICY tenant_isolation_policy ON tickets
+    FOR ALL
+    USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
+```
+
+### 3. Migrációk
+
+**Naming konvenció:**
+- Flyway: `V{version}__{description}.sql`
+- Példa: `V1__initial_schema.sql`, `V2__add_projects.sql`
+
+**Best practices:**
+- Idempotens migrációk (`CREATE TABLE IF NOT EXISTS`)
+- Kisebb, logikus részekre bontás
+- DDL és DML különválasztása
+- Rollback lehetőség
+
+### 4. Indexelési Stratégia
+
+**Kritikus indexek:**
+- `tenant_id` - Minden táblában
+- `(tenant_id, status)` - Gyakori szűrési kombinációk
+- `(tenant_id, user_id)` - User-specifikus lekérdezések
+- `created_at` - Időrendi listázás
+
+### 5. Constraints
+
+**Kötelező constraint-ek:**
+- `NOT NULL` - Kötelező mezők
+- `UNIQUE` - Egyedi értékek (tenant-onként)
+- `FOREIGN KEY` - Referenciális integritás
+- `CHECK` - Érték validáció
+
+## Főbb Táblák
+
+### Core Tables
+- `tenants` - Bérlők
+- `tenant_modules` - Modul aktiválások
+- `users` - Felhasználók
+
+### Ticket Tables
+- `tickets` - Support ticketek
+- `ticket_categories` - Kategóriák
+- `ticket_statuses` - Státuszok
+- `comments` - Kommentek
+- `attachments` - Csatolmányok
+
+### Project Tables
+- `projects` - Fejlesztési projektek
+- `project_tasks` - Projekt feladatok
+- `time_entries` - Időkövetés
+- `quotes`, `orders` - Árajánlatok és rendelések
+
+### AI Agent Tables
+- `chat_sessions` - AI chat munkamenetek
+- `chat_messages` - AI chat üzenetek
+- `agent_episodes` - Agent episodic memory
+- `agent_procedures` - Agent procedural memory
+- `agent_knowledge` - Agent semantic knowledge
+- `agent_learning_history` - Tanulási előzmények
+- `agent_tool_usage` - Tool használat
+- `agent_reflection_sessions` - Önértékelés
+- `agent_execution_plans` - Végrehajtási tervek
+
+## Dokumentáció
+
+- [Database Setup](../docs/development/database/setup.md)
+- [Migrations](../docs/development/database/migrations.md)
+- [Seed Data](../docs/development/database/seed-data.md)
+- [Backup/Restore](../docs/development/database/backup-restore.md)
+- [Database Design](../docs/architecture/database-design.md)
+- [Részletes tervezés](../plan/03_adatbazis_tervezes.md)
+
+## Fontos Emlékeztetők
+
+1. **Tenant ID kötelező** - Minden táblában, minden query-ben
+2. **RLS policy-k** - Minden táblához
+3. **Indexek** - Tenant ID + gyakori szűrési mezők
+4. **Migrációk idempotensek** - `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`
+5. **Constraints** - Adatintegritás biztosítása
+

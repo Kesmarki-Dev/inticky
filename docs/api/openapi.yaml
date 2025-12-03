@@ -1,0 +1,767 @@
+openapi: 3.0.3
+info:
+  title: InTicky API
+  description: |
+    InTicky ticketing rendszer REST API dokumentációja.
+    
+    ## Autentikáció
+    Az API JWT token alapú autentikációt használ. A token-t az Authorization header-ben kell küldeni:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Multi-Tenant
+    A rendszer multi-tenant architektúrával működik. A tenant azonosítása:
+    - Subdomain alapú: `{tenant-slug}.inticky.com`
+    - Vagy header alapú: `X-Tenant-ID: <tenant-id>`
+    
+    ## Modul Aktiválás
+    Néhány endpoint modul aktiválást igényel. Ha a modul nem aktív, a válasz 403 Forbidden lesz.
+    
+  version: 1.0.0
+  contact:
+    name: InTicky Support
+    email: support@inticky.com
+
+servers:
+  - url: https://api.inticky.com/api/v1
+    description: Production server
+  - url: https://api-staging.inticky.com/api/v1
+    description: Staging server
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Autentikáció és autorizáció
+  - name: Users
+    description: Felhasználó kezelés
+  - name: Tickets
+    description: Support ticketek kezelése
+  - name: Projects
+    description: Fejlesztési projektek kezelése
+  - name: Notifications
+    description: Értesítések
+  - name: Files
+    description: Fájl kezelés
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Bejelentkezés
+      description: Email és jelszó alapú bejelentkezés
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Sikeres bejelentkezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Hibás email vagy jelszó
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Aktuális felhasználó információk
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Felhasználó információk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Nincs autentikáció
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Felhasználók listája
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Felhasználók listája
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+    post:
+      tags:
+        - Users
+      summary: Új felhasználó létrehozása
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Felhasználó létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Felhasználó részletei
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Felhasználó részletei
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Felhasználó nem található
+
+  /tickets:
+    get:
+      tags:
+        - Tickets
+      summary: Ticketek listája
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, in_progress, resolved, closed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticketek listája
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketListResponse'
+        '403':
+          description: Ticket modul nem aktív
+    post:
+      tags:
+        - Tickets
+      summary: Új ticket létrehozása
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Ticket létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}:
+    get:
+      tags:
+        - Tickets
+      summary: Ticket részletei
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket részletei
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '404':
+          description: Ticket nem található
+    put:
+      tags:
+        - Tickets
+      summary: Ticket frissítése
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Ticket frissítve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}/comments:
+    get:
+      tags:
+        - Tickets
+      summary: Ticket kommentek
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Kommentek listája
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+    post:
+      tags:
+        - Tickets
+      summary: Új komment hozzáadása
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Komment létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: Projektek listája
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [planning, in_progress, completed, cancelled]
+      responses:
+        '200':
+          description: Projektek listája
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+        '403':
+          description: Projekt modul nem aktív
+    post:
+      tags:
+        - Projects
+      summary: Új projekt létrehozása
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Projekt létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{id}:
+    get:
+      tags:
+        - Projects
+      summary: Projekt részletei
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Projekt részletei
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{id}/tasks:
+    get:
+      tags:
+        - Projects
+      summary: Projekt feladatok
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Feladatok listája
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectTask'
+    post:
+      tags:
+        - Projects
+      summary: Új projekt feladat létrehozása
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectTaskRequest'
+      responses:
+        '201':
+          description: Feladat létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectTask'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [admin, support_manager, agent, customer, developer]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [admin, support_manager, agent, customer, developer]
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticketNumber:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [new, in_progress, resolved, closed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        type:
+          type: string
+          enum: [support, bug, question, feature_request]
+        assignedTo:
+          $ref: '#/components/schemas/User'
+        createdBy:
+          $ref: '#/components/schemas/User'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateTicketRequest:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          default: medium
+        type:
+          type: string
+          enum: [support, bug, question, feature_request]
+          default: support
+
+    UpdateTicketRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [new, in_progress, resolved, closed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        assignedToId:
+          type: string
+          format: uuid
+
+    TicketListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        isInternal:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        isInternal:
+          type: boolean
+          default: false
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectNumber:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, in_progress, on_hold, completed, cancelled]
+        customer:
+          $ref: '#/components/schemas/User'
+        manager:
+          $ref: '#/components/schemas/User'
+        budget:
+          type: number
+        estimatedHours:
+          type: number
+        actualHours:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        managerId:
+          type: string
+          format: uuid
+        budget:
+          type: number
+
+    ProjectListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ProjectTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskNumber:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [todo, in_progress, review, done, blocked]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        assignedTo:
+          $ref: '#/components/schemas/User'
+        estimatedHours:
+          type: number
+        actualHours:
+          type: number
+
+    CreateProjectTaskRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          default: medium
+        assignedToId:
+          type: string
+          format: uuid
+
+    PaginationMeta:
+      type: object
+      properties:
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+            timestamp:
+              type: string
+              format: date-time
+

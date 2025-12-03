@@ -1,366 +1,41 @@
-# Cursor Rules - AgentInSec-AI Library & Ticketing System
+# InTicky - Általános Cursor Rules
 
-## Projekt Áttekintés
-Ez egy Spring Boot alapú ticketing rendszer, amely az AgentInSec-AI library-t használja intelligens AI funkcionalitáshoz. A rendszer célja, hogy majdnem minden funkciót az AI is el tudjon látni.
+## Projekt Kontextus
 
-## 🐳 Docker Környezet Szabályok
+Ez az InTicky ticketing rendszer monorepo-ja. A projekt multi-tenant, mikroszolgáltatások architektúrával készül.
 
-### KRITIKUS: Backend Docker Policy
-- **MINDEN backend szolgáltatás CSAK Docker-ben futhat**
-- **SOHA ne indíts backend szolgáltatásokat lokálisan Java-val**
-- **Frontend (React) az EGYETLEN komponens, ami lokálisan fut**
-- **Adatbázis, Redis, Kafka - mind Docker-ben**
+## Főbb Technológiai Stack
 
-### Docker Compose Használat
-```bash
-# Backend szolgáltatások indítása
-docker-compose up -d postgres redis kafka
-docker-compose up --build user-service ticket-service tenant-service
+- **Frontend:** React + TypeScript
+- **Backend:** Java 17+ + Quarkus 3.x
+- **Database:** PostgreSQL 14+
+- **Cache:** Redis
+- **Vector Store:** Qdrant (AI Agent)
+- **Cloud:** Azure
+- **CI/CD:** Jenkins
 
-# Frontend külön (lokálisan)
-cd frontend && npm run dev
+## Általános Szabályok
+
+1. **Multi-tenant izoláció:** Minden adatbázis műveletnél kötelező a `tenant_id` használata
+2. **Modul aktiválás:** Service-ek ellenőrzik a modul aktiválást a `tenant_modules` táblából
+3. **Coding standards:** Kövesd a terület-specifikus `.cursorrules` fájlokat
+4. **Dokumentáció:** Frissítsd a dokumentációt, ha változtatásokat végzel
+
+## Projekt Struktúra
+
+```
+inticky/
+├── backend/          # Java mikroszolgáltatások
+├── frontend/         # React alkalmazás
+├── db/               # Adatbázis migrációk
+├── docs/             # Dokumentáció
+├── plan/             # Tervezési dokumentumok
+└── deployment/       # Deployment konfigurációk
 ```
 
-### Fejlesztési Workflow
-1. Backend változtatás → Docker rebuild szükséges
-2. Frontend változtatás → csak lokális restart
-3. Adatbázis változtatás → Docker container restart
-4. MINDIG Docker-ben tesztelj backend funkciókat
+## További Információk
 
-## AgentInSec-AI Library Szabályok
+- [Projekt áttekintés](./plan/00_projekt_attekintes.md)
+- [Technikai követelmények](./plan/02_technikai_kovetelmenyek.md)
+- [Monorepo struktúra](./plan/07_monorepo_struktura.md)
 
-### 1. Library Alapok
-- **Package**: `com.agentinsec:agentinsec-ai`
-- **Verzió**: 1.8.0
-- **Java verzió**: 17+
-- **GitHub**: https://github.com/Kesmarki-Dev/agentinsec
-- **Architektúra**: Kétfázisú AI Pipeline (Router AI + Agent AI)
-
-### 2. Kétfázisú AI Pipeline Megértése
-```
-Felhasználói kérés → Router AI (Info Select + Func Select) → Agent AI (Válasz gen. + Func exec) → Válasz
-```
-
-**MINDIG használd ezt a mintát:**
-- Router AI kiválasztja a releváns info blokkokat és funkciókat
-- Agent AI generálja a választ és végrehajtja a funkciókat
-- Soha ne próbálj közvetlen AI hívásokat, mindig az AIChat osztályon keresztül
-
-### 3. Inicializálás Szabályok
-
-**PREFERÁLT módszer - Factory metódusok:**
-```java
-// OpenAI - egyszerű
-AIChat openAIChat = AIChatBuilder.forOpenAI("your-openai-api-key");
-
-// Azure - külön deployments
-AIChat azureChat = AIChatBuilder.forAzure(
-    "https://your-resource.openai.azure.com/",
-    "your-azure-api-key",
-    "gpt-router",      // Router deployment
-    "gpt-agent",       // Agent deployment  
-    "gpt-embedding"    // Embedding deployment
-);
-
-// Azure - közös deployment
-AIChat azureChatSimple = AIChatBuilder.forAzure(
-    "https://your-resource.openai.azure.com/",
-    "your-azure-api-key",
-    "gpt-4"  // Közös deployment name
-);
-```
-
-**KERÜLD a manuális builder használatát**, kivéve speciális konfigurációknál.
-
-### 4. Info Blokkok Szabályok
-
-**MINDIG használj Builder pattern-t:**
-```java
-InfoBlock block = InfoBlock.builder()
-    .id("unique_id")                    // KÖTELEZŐ - egyedi azonosító
-    .title("Rövid cím")                // KÖTELEZŐ - rövid, leíró cím
-    .content("Részletes tartalom...")   // KÖTELEZŐ - a tényleges információ
-    .category("kategória")              // AJÁNLOTT - csoportosításhoz
-    .tag("tag1", "tag2")               // OPCIONÁLIS - kereséshez
-    .shouldChunk(true)                 // Nagy szövegekhez (>500 karakter)
-    .chunkSize(500)                    // Chunk méret beállítása
-    .build();
-
-aiChat.addInfoBlock(block);
-```
-
-**Info Block Best Practices:**
-- Használj beszédes ID-kat: `ticket_workflow`, `user_management`, `priority_rules`
-- Kategorizálj logikusan: `workflow`, `rules`, `help`, `api`
-- Nagy tartalmakat mindig chunk-olj (`shouldChunk(true)`)
-- Egy info block egy témakört fedjen le
-
-### 5. Funkció Regisztráció Szabályok
-
-**ToolBuilder használata (1.6.0+) - PREFERÁLT:**
-```java
-aiChat.registerTool(
-    ToolBuilder.create("function_name")
-        .description("Pontos leírás mit csinál")
-        .category("kategória")                          // Csoportosításhoz
-        .requiredString("param1", "Paraméter leírás")  // Kötelező string param
-        .optionalNumber("param2", "Opcionális szám", 0) // Opcionális number param
-        .requiredPermission("user")                     // Biztonsági szint
-        .isDangerous(false)                            // Veszélyes művelet?
-        .execute(params -> {
-            // Lambda-based execution - EGYSZERŰ és TISZTA
-            String param1 = params.get("param1").toString();
-            return Map.of("result", processFunction(param1));
-        })
-);
-```
-
-**Régi FunctionDescriptor módszer - KERÜLD:**
-```java
-// NE használd ezt, kivéve speciális esetekben
-FunctionDescriptor func = FunctionDescriptor.builder()...
-```
-
-### 6. Chat Használat Szabályok
-
-**Alapvető chat minták:**
-```java
-// Egyszerű chat - session nélkül
-String response = aiChat.chat("Felhasználói kérdés");
-
-// Session alapú chat - AJÁNLOTT ticketing rendszerhez
-String response = aiChat.chatInSession(sessionId, userId, "Kérdés");
-
-// Dinamikus context - speciális esetekhez
-List<InfoBlock> contextBlocks = loadTicketContext(ticketId);
-String response = aiChat.chatWithContext(userId, "Kérdés", contextBlocks);
-
-// Router döntés követése - debug célokra
-aiChat.chat("Kérdés", (SelectedContext context) -> {
-    log.debug("Kiválasztott blokkok: " + context.getRelevantInfoBlockIds());
-    log.debug("Kiválasztott funkciók: " + context.getRelevantFunctionNames());
-});
-```
-
-### 7. Spring Boot Integráció Szabályok
-
-**Service osztály minta:**
-```java
-@Service
-public class AITicketService {
-    private final AIChat aiChat;
-    
-    @Autowired
-    public AITicketService(@Value("${agentinsec.api.key}") String apiKey) {
-        this.aiChat = AIChatBuilder.forOpenAI(apiKey);
-        initializeTicketingInfoBlocks();
-        registerTicketingFunctions();
-    }
-    
-    private void initializeTicketingInfoBlocks() {
-        // Ticketing specifikus info blokkok
-        aiChat.addInfoBlock(InfoBlock.builder()
-            .id("ticket_workflow")
-            .title("Ticket Workflow")
-            .content("Ticket létrehozás, módosítás, lezárás folyamata...")
-            .category("workflow")
-            .build());
-    }
-    
-    private void registerTicketingFunctions() {
-        // Ticketing specifikus funkciók
-        aiChat.registerTool(
-            ToolBuilder.create("create_ticket")
-                .description("Új ticket létrehozása")
-                .category("ticket_management")
-                .requiredString("title", "Ticket címe")
-                .requiredString("description", "Ticket leírása")
-                .optionalString("priority", "Prioritás", "medium")
-                .execute(params -> createTicket(params))
-        );
-    }
-}
-```
-
-### 8. Biztonsági Szabályok
-
-**Jogosultság ellenőrzés:**
-```java
-// Permission checker beállítása
-DefaultPermissionChecker permissionChecker = new DefaultPermissionChecker();
-permissionChecker.addPermission("user1", "admin");
-permissionChecker.addPermission("user2", "user");
-
-// Veszélyes műveletek megerősítése
-DefaultConfirmationProvider confirmationProvider = new DefaultConfirmationProvider(
-    (userId, action, reason) -> askUserConfirmation(userId, action, reason)
-);
-
-AIChat aiChat = AIChatBuilder.create()
-    .withConfig(config)
-    .withPermissionChecker(permissionChecker)
-    .withConfirmationProvider(confirmationProvider)
-    .build();
-```
-
-**Funkció biztonsági szintek:**
-- `requiredPermission("user")` - alapfelhasználó
-- `requiredPermission("admin")` - admin jogok
-- `isDangerous(true)` - veszélyes műveletek (törlés, módosítás)
-
-### 9. Vector Store Szabályok
-
-**In-Memory (fejlesztés):**
-```java
-// Alapértelmezett - automatikus
-AIChat aiChat = AIChatBuilder.forOpenAI(apiKey);
-```
-
-**Qdrant (production):**
-```java
-VectorStore qdrantStore = new QdrantVectorStore(
-    embeddingProvider,
-    "http://localhost:6333",
-    "ticketing_vectors"  // Collection név
-);
-
-AIChat aiChat = AIChatBuilder.create()
-    .withConfig(config)
-    .withVectorStore(qdrantStore)
-    .build();
-```
-
-### 10. Error Handling Szabályok
-
-**Library specifikus kivételek:**
-```java
-try {
-    String response = aiChat.chat(message);
-} catch (AgentInSecException e) {
-    log.error("AgentInSec hiba: " + e.getMessage());
-    // Fallback logika
-} catch (SecurityException e) {
-    log.error("Biztonsági hiba: " + e.getMessage());
-    // Jogosultság hiány kezelése
-}
-```
-
-### 11. Ticketing Rendszer Specifikus Szabályok
-
-**AI Funkciók ticketing rendszerhez:**
-- `create_ticket` - Ticket létrehozás
-- `update_ticket` - Ticket módosítás
-- `assign_ticket` - Ticket hozzárendelés
-- `close_ticket` - Ticket lezárás
-- `search_tickets` - Ticket keresés
-- `get_ticket_status` - Státusz lekérdezés
-- `add_comment` - Komment hozzáadás
-- `escalate_ticket` - Eszkaláció
-
-**Info Blokkok ticketing rendszerhez:**
-- `ticket_workflow` - Ticket folyamatok
-- `priority_rules` - Prioritási szabályok
-- `sla_policies` - SLA szabályzatok
-- `user_permissions` - Felhasználói jogok
-- `escalation_matrix` - Eszkalációs mátrix
-
-### 12. Konfigurációs Szabályok
-
-**application.yml beállítások:**
-```yaml
-agentinsec:
-  api-key: ${AGENTINSEC_API_KEY:demo-key}
-  provider: openai  # vagy azure
-  azure:
-    endpoint: ${AZURE_OPENAI_ENDPOINT:}
-    router-deployment: gpt-router
-    agent-deployment: gpt-agent
-    embedding-deployment: gpt-embedding
-  vector-store:
-    type: memory  # vagy qdrant
-    qdrant:
-      url: http://localhost:6333
-      collection: ticketing_vectors
-```
-
-### 13. Tesztelési Szabályok
-
-**Unit tesztek:**
-```java
-@Test
-void testTicketCreation() {
-    // Mock AIChat
-    AIChat mockAIChat = Mockito.mock(AIChat.class);
-    when(mockAIChat.chat(anyString())).thenReturn("Ticket létrehozva");
-    
-    // Test logic
-}
-```
-
-**Integrációs tesztek:**
-```java
-@SpringBootTest
-class AITicketServiceIntegrationTest {
-    @Autowired
-    private AITicketService aiTicketService;
-    
-    @Test
-    void testRealAIIntegration() {
-        // Valódi AI hívás tesztelése
-    }
-}
-```
-
-### 14. Performance és Optimalizálás
-
-**Thread Safety:**
-- AIChat thread-safe, többszálú használat OK
-- AsyncAIChat használata nagy terheléshez
-
-**Caching:**
-- Info blokkok cache-elése automatikus
-- Vector store cache-elés beépített
-
-**Connection Pooling:**
-- HTTP connection pooling automatikus
-- Azure SDK mód ajánlott production-ben
-
-### 15. Gyakori Hibák Elkerülése
-
-**NE csináld:**
-- Közvetlen AI API hívások (mindig AIChat-en keresztül)
-- Info blokkok nélküli funkció regisztráció
-- Biztonsági ellenőrzések kihagyása
-- Nagy info blokkok chunking nélkül
-
-**MINDIG csináld:**
-- Factory metódusok használata inicializáláshoz
-- ToolBuilder használata funkciókhoz
-- Session alapú chat ticketing rendszerben
-- Proper error handling
-
-### 16. Fejlesztési Workflow
-
-1. **Info blokkok definiálása** - Mi kell az AI-nak tudnia?
-2. **Funkciók regisztrálása** - Mit tud csinálni az AI?
-3. **Chat integráció** - Hogyan kommunikál a felhasználó?
-4. **Tesztelés** - Működik minden funkció?
-5. **Optimalizálás** - Performance és biztonság OK?
-
----
-
-## Ticketing Rendszer Specifikus Irányelvek
-
-### AI-First Approach
-- Minden funkció legyen elérhető AI-n keresztül is
-- Natural language interface minden művelethez
-- AI segítsen a ticket kategorizálásban és prioritásban
-- Automatikus válasz javaslatok
-
-### User Experience
-- Chat interface legyen az elsődleges
-- Hagyományos UI legyen backup
-- AI context legyen ticket-specifikus
-- Session management ticket alapon
-
-Ez a szabályrendszer biztosítja az AgentInSec-AI library helyes használatát a ticketing rendszerben.

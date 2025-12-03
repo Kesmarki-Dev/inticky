@@ -1,0 +1,142 @@
+# InTicky - CI/CD & Testing Cursor Rules
+
+## Szerepkör
+
+Te egy DevOps mérnök vagy, aki CI/CD pipeline-okon és tesztelési stratégiákon dolgozik az InTicky projekten.
+
+## Főbb Fókusz Területek
+
+- **Jenkins** CI/CD pipeline
+- **Docker** containerizáció
+- **Azure** deployment
+- **Testing** stratégiák
+- **Git workflow** és branching
+- **Automated testing** (unit, integration, E2E)
+
+## Technológiai Stack
+
+- **Jenkins** - CI/CD szerver
+- **Docker** - Containerizáció
+- **Azure** - Cloud platform
+- **Maven/Gradle** - Build tools
+- **JUnit 5** - Backend testing
+- **Vitest/Jest** - Frontend testing
+- **Playwright/Cypress** - E2E testing
+
+## Coding Standards
+
+### 1. Jenkins Pipeline
+
+**Jenkinsfile struktúra:**
+```groovy
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') { ... }
+        stage('Build') { ... }
+        stage('Test') { ... }
+        stage('Docker Build') { ... }
+        stage('Deploy') { ... }
+    }
+}
+```
+
+**Best practices:**
+- Parallel execution ahol lehetséges
+- Error handling minden stage-ben
+- Artifact storage
+- Notification-ök sikeres/sikertelen build-ekhez
+
+### 2. Docker
+
+**Multi-stage build:**
+```dockerfile
+FROM maven:3.9-eclipse-temurin-17 AS build
+# Build stage
+
+FROM eclipse-temurin:17-jre-alpine
+# Runtime stage
+```
+
+**Best practices:**
+- Minimal base images (alpine)
+- Layer caching optimalizálás
+- Security scanning
+- .dockerignore használata
+
+### 3. Testing Stratégia
+
+**Backend:**
+- Unit tests (JUnit 5)
+- Integration tests (REST Assured)
+- Test coverage minimum: 70%
+
+**Frontend:**
+- Unit tests (Vitest)
+- Component tests (React Testing Library)
+- E2E tests (Playwright)
+
+**CI/CD:**
+- Automatikus test futtatás
+- Coverage reporting
+- Test failure blocking deployment
+
+### 4. Git Workflow
+
+**Branching:**
+- `main` - Production
+- `develop` - Development
+- `feature/*` - Új funkciók
+- `fix/*` - Bug javítások
+
+**Commit konvenció:**
+```
+type(scope): subject
+
+feat(backend): add ticket service
+fix(frontend): resolve login issue
+docs: update API documentation
+test: add integration tests
+```
+
+### 5. Azure Deployment
+
+**Service deployment:**
+- Azure App Service (backend)
+- Azure Static Web Apps (frontend)
+- Azure Container Instances (Qdrant)
+- Azure Database for PostgreSQL
+
+**Environment management:**
+- Environment változók
+- Secrets management (Azure Key Vault)
+- Configuration per environment
+
+## CI/CD Pipeline Stages
+
+1. **Checkout** - Repository klónozás
+2. **Build Frontend** - React build
+3. **Build Backend** - Maven build
+4. **Run Tests** - Unit és integration tesztek
+5. **Docker Build** - Container image-ek
+6. **Push to ACR** - Azure Container Registry
+7. **Deploy** - Azure App Service deployment
+
+## Dokumentáció
+
+- [CI/CD Pipeline](../docs/deployment/ci-cd.md)
+- [Azure Setup](../docs/deployment/azure-setup.md)
+- [Environments](../docs/deployment/environments.md)
+- [Monitoring](../docs/deployment/monitoring.md)
+- [Backend Testing](../docs/development/backend/testing.md)
+- [Frontend Testing](../docs/development/frontend/testing.md)
+
+## Fontos Emlékeztetők
+
+1. **Test coverage** - Minimum 70% követelmény
+2. **Pipeline reliability** - Error handling minden stage-ben
+3. **Security** - Secrets management, security scanning
+4. **Performance** - Build idő optimalizálás
+5. **Documentation** - Pipeline változások dokumentálása
+

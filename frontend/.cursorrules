@@ -1,0 +1,135 @@
+# InTicky - Frontend Cursor Rules
+
+## Szerepkör
+
+Te egy frontend fejlesztő vagy, aki React TypeScript alkalmazáson dolgozik az InTicky projekten.
+
+## Főbb Fókusz Területek
+
+- **React 18+** komponensek
+- **TypeScript** típusbiztonság
+- **State management** (Redux Toolkit vagy Zustand)
+- **API integráció** (Axios)
+- **Routing** (React Router)
+- **Modul check** implementáció
+
+## Technológiai Stack
+
+- **React 18+**
+- **TypeScript**
+- **Vite** - Build tool
+- **React Router** - Routing
+- **Redux Toolkit** vagy **Zustand** - State management
+- **Axios** - HTTP client
+- **Vitest** - Testing
+
+## Coding Standards
+
+### 1. TypeScript
+
+**Mindig típusozott props és változók:**
+```typescript
+// ✅ JÓ
+interface TicketCardProps {
+  ticket: Ticket;
+  onSelect?: (ticket: Ticket) => void;
+}
+
+export function TicketCard({ ticket, onSelect }: TicketCardProps) {
+  // ...
+}
+
+// ❌ ROSSZ
+export function TicketCard(props: any) {
+  // ...
+}
+```
+
+### 2. React Komponensek
+
+**Function components használata:**
+```typescript
+// ✅ JÓ
+export function TicketList({ tickets }: TicketListProps) {
+  return <div>...</div>;
+}
+
+// ❌ ROSSZ - Class components
+export class TicketList extends React.Component {
+  // ...
+}
+```
+
+### 3. State Management
+
+**Local state vs Global state:**
+```typescript
+// Local state - egyszerű esetek
+const [isExpanded, setIsExpanded] = useState(false);
+
+// Global state - komplex esetek
+const tickets = useTicketStore((state) => state.tickets);
+```
+
+### 4. API Integráció
+
+**Axios instance használata:**
+```typescript
+// Tenant ID és token automatikus hozzáadása
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  const tenantId = useTenantStore.getState().tenantId;
+  if (tenantId) {
+    config.headers['X-Tenant-ID'] = tenantId;
+  }
+  
+  return config;
+});
+```
+
+### 5. Modul Check
+
+**Modul aktiválás ellenőrzés:**
+```typescript
+function ProjectListPage() {
+  const { isActive, loading } = useModule('project');
+  
+  if (loading) return <Loading />;
+  if (!isActive) return <ModuleNotAvailable module="project" />;
+  
+  return <ProjectList />;
+}
+```
+
+## Projekt Struktúra
+
+```
+frontend/src/
+├── components/     # Újrafelhasználható komponensek
+├── pages/         # Oldalak/routes
+├── services/       # API hívások
+├── store/          # State management
+├── hooks/          # Custom hooks
+├── utils/          # Segédfunkciók
+└── types/          # TypeScript típusok
+```
+
+## Dokumentáció
+
+- [Frontend Setup](../docs/development/frontend/setup.md)
+- [Frontend Architektúra](../docs/development/frontend/architecture.md)
+- [Coding Standards](../docs/development/frontend/coding-standards.md)
+- [Testing](../docs/development/frontend/testing.md)
+
+## Fontos Emlékeztetők
+
+1. **TypeScript** - Mindig típusozott kód
+2. **Function components** - Class components helyett
+3. **Modul check** - Modul aktiválás ellenőrzés
+4. **Tenant ID** - API hívásoknál automatikus hozzáadás
+5. **Error handling** - Try-catch és error boundaries
+

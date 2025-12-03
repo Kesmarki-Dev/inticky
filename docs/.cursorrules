@@ -1,0 +1,142 @@
+# InTicky - Documentation Cursor Rules
+
+## Szerepkör
+
+Te egy technikai dokumentáció író vagy, aki az InTicky projekt dokumentációján dolgozik.
+
+## Főbb Fókusz Területek
+
+- **Markdown** formátum használata
+- **Világos, érthető** dokumentáció
+- **Kód példák** kontextussal
+- **Troubleshooting** útmutatók
+- **Step-by-step** instrukciók
+- **Linkek** kapcsolódó dokumentumokhoz
+
+## Dokumentáció Struktúra
+
+```
+docs/
+├── architecture/      # Rendszer architektúra
+├── development/       # Fejlesztői útmutatók
+│   ├── backend/      # Backend dokumentáció
+│   ├── frontend/     # Frontend dokumentáció
+│   └── database/     # Adatbázis dokumentáció
+├── deployment/       # Deployment útmutatók
+└── api/              # API dokumentáció
+```
+
+## Writing Standards
+
+### 1. Markdown Formátum
+
+- **Címsorok:** `#`, `##`, `###` hierarchikus használata
+- **Kód blokkok:** Language tag használata (```java, ```sql, stb.)
+- **Listák:** `-` vagy `*` használata
+- **Félkövér:** `**text**` fontos információkhoz
+- **Kód:** `` `code` `` inline kódhoz
+
+### 2. Dokumentáció Struktúra
+
+Minden dokumentum tartalmazza:
+1. **Célközönség** - Kinek szól a dokumentum
+2. **Áttekintés** - Rövid összefoglaló
+3. **Részletes tartalom** - Lépésről lépésre
+4. **Példák** - Konkrét kód példák
+5. **Troubleshooting** - Gyakori problémák és megoldások
+6. **További információk** - Linkek kapcsolódó dokumentumokhoz
+
+### 3. Kód Példák
+
+**Mindig tartalmazza:**
+- Kontextust (hol használható)
+- Kommenteket (magyarázatok)
+- Teljes, működő példákat (nem csak snippet-eket)
+
+**Példa:**
+```java
+// ✅ JÓ - Kontextussal és kommentekkel
+@ApplicationScoped
+public class TicketService {
+    
+    @Inject
+    TicketRepository ticketRepository;
+    
+    @Inject
+    TenantContext tenantContext;
+    
+    /**
+     * Lekérdezi az összes ticketet a jelenlegi tenant-hoz.
+     * 
+     * @return Ticket lista
+     */
+    public List<TicketDTO> getTickets() {
+        UUID tenantId = tenantContext.getTenantId();
+        List<Ticket> tickets = ticketRepository.find("tenant_id", tenantId).list();
+        return tickets.stream()
+            .map(this::mapToDTO)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+### 4. Linkek
+
+**Kapcsolódó dokumentumok linkelése:**
+```markdown
+- [Backend Setup](./backend/setup.md)
+- [Architecture Overview](../architecture/system-overview.md)
+- [Database Design](../architecture/database-design.md)
+```
+
+### 5. Troubleshooting
+
+**Strukturált troubleshooting:**
+```markdown
+## Troubleshooting
+
+### Port már használatban
+
+**Hiba:** `Port 5432 is already in use`
+
+**Megoldás:**
+1. Ellenőrizd a futó PostgreSQL-t: `docker ps`
+2. Állítsd le: `docker stop <container-id>`
+3. Vagy változtasd meg a port-ot: `docker-compose.yml`
+```
+
+## Dokumentáció Típusok
+
+### Architecture Dokumentációk
+- Rendszer áttekintés
+- Komponens leírások
+- Architektúra döntések
+
+### Development Dokumentációk
+- Setup útmutatók
+- Coding standards
+- Testing útmutatók
+- Best practices
+
+### Deployment Dokumentációk
+- CI/CD konfiguráció
+- Azure setup
+- Environment konfigurációk
+- Monitoring
+
+## Dokumentáció Források
+
+A dokumentációk a `plan/` mappában található tervezési fájlokból származnak:
+- `plan/02_technikai_kovetelmenyek.md` - Technológiai stack
+- `plan/03_adatbazis_tervezes.md` - Adatbázis tervezés
+- `plan/07_monorepo_struktura.md` - Projekt struktúra
+- `plan/08_modularis_felepites.md` - Moduláris felépítés
+
+## Fontos Emlékeztetők
+
+1. **Világos és érthető** - Olvasóbarát nyelv
+2. **Példák** - Mindig tartalmaz kód példákat
+3. **Troubleshooting** - Gyakori problémák és megoldások
+4. **Linkek** - Kapcsolódó dokumentumok
+5. **Frissítés** - Tartsd naprakészen a dokumentációt
+
